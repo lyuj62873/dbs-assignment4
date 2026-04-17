@@ -33,3 +33,10 @@ update without a manual refresh.
 3. Build the frontend dashboard in Next.js
 4. Implement the polling worker and database writes
 5. Deploy the frontend and worker to their target platforms
+
+## Phase 2 Assets
+
+- `supabase/schema.sql`: database schema and public read policy
+- `apps/web/.env.local.example`: frontend environment template
+- `apps/worker/.env.example`: worker environment template
+- `SETUP.md`: manual platform configuration checklist
