@@ -88,3 +88,16 @@ body {
   color: var(--muted);
   line-height: 1.6;
 }
+
+.card .temp {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: var(--accent);
+  margin: 8px 0;
+  line-height: 1;
+}
+
+.card .meta {
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
