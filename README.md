@@ -1,42 +1,63 @@
 # Assignment 4: Realtime Weather Dashboard
 
-This project is a deployed multi-service system that monitors live weather data
-and displays updates in real time.
+A deployed multi-service system that collects live weather data and streams
+updates to a Next.js frontend in real time.
 
 ## Architecture
 
-- External data source: Open-Meteo
-- Background worker: Node.js service on Railway
-- Database and realtime layer: Supabase
-- Frontend: Next.js on Vercel
+| Layer | Technology | Platform |
+|-------|-----------|----------|
+| External data | Open-Meteo API | — |
+| Background worker | Node.js | Railway |
+| Database + Realtime | PostgreSQL + Supabase Realtime | Supabase |
+| Frontend | Next.js 15 | Vercel |
 
-The worker polls live weather conditions, writes normalized snapshots to the
-database, and the frontend subscribes to realtime database changes so the UI can
-update without a manual refresh.
+## How it works
+
+1. The worker runs on Railway and polls Open-Meteo every 60 seconds for current
+   conditions across five cities.
+2. Each poll upserts a row in the `weather_snapshots` table (keyed by city name).
+3. Supabase Realtime broadcasts the row change to all connected clients.
+4. The Next.js frontend loads the latest snapshots server-side on first render,
+   then subscribes to Realtime so the UI updates live without a page refresh.
+
+## Features
+
+- Live weather cards for Chicago, New York, Los Angeles, London, and Tokyo
+- Search any city in the world — weather is fetched on demand from Open-Meteo
+- Pin cities to a personal dashboard that persists across sessions via
+  `localStorage`; each visitor's selection is independent
 
 ## Project Structure
 
 ```text
 .
-├── CLAUDE.md
-├── README.md
-├── package.json
-└── apps
-    ├── web
-    └── worker
+├── supabase/
+│   └── schema.sql          # table definition, RLS policy, Realtime publication
+└── apps/
+    ├── web/                # Next.js frontend (Vercel)
+    │   ├── app/
+    │   │   ├── layout.tsx
+    │   │   ├── page.tsx    # server component — fetches initial snapshots
+    │   │   └── globals.css
+    │   ├── components/
+    │   │   └── WeatherDashboard.tsx  # client component — Realtime + search + pins
+    │   └── lib/
+    │       └── supabase.ts
+    └── worker/             # polling worker (Railway)
+        └── index.js        # Open-Meteo → Supabase upsert loop
 ```
 
-## Implementation Phases
+## Environment Variables
 
-1. Scaffold the monorepo and define the architecture
-2. Configure Supabase schema, Realtime, and environment variables
-3. Build the frontend dashboard in Next.js
-4. Implement the polling worker and database writes
-5. Deploy the frontend and worker to their target platforms
+**`apps/web/.env.local`**
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
 
-## Phase 2 Assets
-
-- `supabase/schema.sql`: database schema and public read policy
-- `apps/web/.env.local.example`: frontend environment template
-- `apps/worker/.env.example`: worker environment template
-- `SETUP.md`: manual platform configuration checklist
+**`apps/worker/.env`**
+```
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+```

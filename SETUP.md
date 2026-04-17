@@ -1,57 +1,43 @@
 # Platform Setup Guide
 
-This document lists the external platform configuration required before the
-application code can be connected and deployed.
+Steps to provision the external services and wire them to the application.
 
 ## 1. Supabase
 
 1. Create a new Supabase project.
-2. Open the SQL Editor.
-3. Run the SQL in `supabase/schema.sql`.
-4. Confirm that the `weather_snapshots` table exists.
-5. In `Database -> Replication`, verify that `weather_snapshots` is included in
-   Realtime replication.
-6. In `Project Settings -> API`, copy:
-   - Project URL
-   - `anon` public key
-   - `service_role` key
+2. Open the SQL Editor and run `supabase/schema.sql`.
+3. Confirm the `weather_snapshots` table exists with RLS enabled.
+4. In **Database → Replication**, verify `weather_snapshots` is included in
+   the Realtime publication.
+5. In **Project Settings → API**, copy the Project URL, `anon` key, and
+   `service_role` key.
 
 ## 2. Local Environment Files
 
-Create these files from the provided examples:
+Create the following files from the provided examples and fill in the
+Supabase values:
 
-- `apps/web/.env.local`
-- `apps/worker/.env`
+**`apps/web/.env.local`**
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-Fill them with the Supabase values:
+**`apps/worker/.env`**
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
-- `apps/web/.env.local`
-  - `NEXT_PUBLIC_SUPABASE_URL`
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `apps/worker/.env`
-  - `SUPABASE_URL`
-  - `SUPABASE_SERVICE_ROLE_KEY`
+## 3. Vercel (frontend)
 
-## 3. Vercel
-
-Vercel is not required for local development in this phase, but setting it up
-now avoids rework later.
-
-1. Create a new Vercel project and import this GitHub repository.
-2. Set the project root to `apps/web`.
-3. Add these environment variables:
+1. Create a new Vercel project and import the GitHub repository.
+2. Set the root directory to `apps/web`.
+3. Set the install command to `npm install --prefix=../..`.
+4. Add the environment variables:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-4. Do not deploy until the frontend phase is complete.
 
-## 4. Railway
+## 4. Railway (worker)
 
-Railway is also optional for this phase, but it is useful to prepare the
-service entry early.
-
-1. Create a new Railway project and connect this GitHub repository.
+1. Create a new Railway project and connect the GitHub repository.
 2. Set the root directory to `apps/worker`.
-3. Add these environment variables:
+3. Add the environment variables:
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
-4. Do not start the service until the worker phase is complete.
