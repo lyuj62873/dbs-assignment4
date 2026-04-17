@@ -10,6 +10,7 @@ updates to a Next.js frontend in real time.
 | External data | Open-Meteo API | — |
 | Background worker | Node.js | Railway |
 | Database + Realtime | PostgreSQL + Supabase Realtime | Supabase |
+| Authentication | Clerk | Clerk |
 | Frontend | Next.js 15 | Vercel |
 
 ## How it works
@@ -20,44 +21,40 @@ updates to a Next.js frontend in real time.
 3. Supabase Realtime broadcasts the row change to all connected clients.
 4. The Next.js frontend loads the latest snapshots server-side on first render,
    then subscribes to Realtime so the UI updates live without a page refresh.
+5. Authenticated users can pin any city to a personal dashboard stored in
+   the `user_cities` table; each user's selection is isolated by their Clerk
+   user ID and persists across devices.
 
 ## Features
 
 - Live weather cards for Chicago, New York, Los Angeles, London, and Tokyo
 - Search any city in the world — weather is fetched on demand from Open-Meteo
-- Pin cities to a personal dashboard that persists across sessions via
-  `localStorage`; each visitor's selection is independent
+- Sign in with Clerk to pin cities to a personal dashboard backed by Supabase
+- Pinned cities reload automatically on every visit
 
 ## Project Structure
 
 ```text
 .
 ├── supabase/
-│   └── schema.sql          # table definition, RLS policy, Realtime publication
+│   └── schema.sql              # weather_snapshots + user_cities tables
 └── apps/
-    ├── web/                # Next.js frontend (Vercel)
+    ├── web/                    # Next.js frontend (Vercel)
     │   ├── app/
-    │   │   ├── layout.tsx
-    │   │   ├── page.tsx    # server component — fetches initial snapshots
-    │   │   └── globals.css
+    │   │   ├── layout.tsx      # ClerkProvider + site header
+    │   │   ├── page.tsx        # server component — fetches initial snapshots
+    │   │   ├── globals.css
+    │   │   └── api/cities/
+    │   │       └── route.ts    # GET / POST / DELETE for pinned cities
     │   ├── components/
-    │   │   └── WeatherDashboard.tsx  # client component — Realtime + search + pins
+    │   │   └── WeatherDashboard.tsx
     │   └── lib/
     │       └── supabase.ts
-    └── worker/             # polling worker (Railway)
-        └── index.js        # Open-Meteo → Supabase upsert loop
+    └── worker/                 # polling worker (Railway)
+        └── index.js            # Open-Meteo → Supabase upsert loop
 ```
 
 ## Environment Variables
 
-**`apps/web/.env.local`**
-```
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-```
-
-**`apps/worker/.env`**
-```
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
-```
+See `SETUP.md` for the full setup guide and `apps/web/.env.local.example` for
+the complete list of required variables.

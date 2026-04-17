@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useUser, SignInButton } from '@clerk/nextjs';
 import { supabase, WeatherSnapshot } from '../lib/supabase';
 
 const WMO_LABELS: Record<number, string> = {
@@ -16,39 +17,23 @@ const WMO_LABELS: Record<number, string> = {
 type PinnedCity = { city: string; latitude: number; longitude: number };
 type LiveWeather = { city: string; temperature: number; windspeed: number; weather_code: number };
 
-const LS_KEY = 'pinned_cities';
-
-function loadPinned(): PinnedCity[] {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) ?? '[]'); }
-  catch { return []; }
-}
-
-function savePinned(list: PinnedCity[]) {
-  localStorage.setItem(LS_KEY, JSON.stringify(list));
-}
-
-async function fetchWeatherForCity(latitude: number, longitude: number): Promise<LiveWeather | null> {
+async function fetchWeatherForCoords(latitude: number, longitude: number): Promise<Omit<LiveWeather, 'city'> | null> {
   try {
     const res = await fetch(
       `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`
     );
-    const data = await res.json();
-    const w = data.current_weather;
-    return { city: '', temperature: w.temperature, windspeed: w.windspeed, weather_code: w.weathercode };
+    const { current_weather: w } = await res.json();
+    return { temperature: w.temperature, windspeed: w.windspeed, weather_code: w.weathercode };
   } catch { return null; }
 }
 
-function WeatherCard({
-  city, temperature, windspeed, weather_code, updated_at, onRemove,
-}: {
+function WeatherCard({ city, temperature, windspeed, weather_code, updated_at, onRemove }: {
   city: string; temperature: number; windspeed: number;
   weather_code: number; updated_at?: string; onRemove?: () => void;
 }) {
   return (
     <article className="card">
-      {onRemove && (
-        <button className="card-remove" onClick={onRemove} aria-label="Remove">×</button>
-      )}
+      {onRemove && <button className="card-remove" onClick={onRemove} aria-label="Remove">×</button>}
       <h2>{city}</h2>
       <p className="temp">{temperature}°C</p>
       <p>{WMO_LABELS[weather_code] ?? `Code ${weather_code}`}</p>
@@ -59,6 +44,7 @@ function WeatherCard({
 }
 
 export default function WeatherDashboard({ initial }: { initial: WeatherSnapshot[] }) {
+  const { isSignedIn, isLoaded } = useUser();
   const [rows, setRows] = useState<WeatherSnapshot[]>(initial.slice(0, 4));
   const [pinned, setPinned] = useState<PinnedCity[]>([]);
   const [pinnedWeather, setPinnedWeather] = useState<Record<string, LiveWeather>>({});
@@ -69,17 +55,23 @@ export default function WeatherDashboard({ initial }: { initial: WeatherSnapshot
   const [searchError, setSearchError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Load pinned cities from localStorage on mount and fetch their weather
+  // Load pinned cities from DB when user signs in
   useEffect(() => {
-    const stored = loadPinned();
-    setPinned(stored);
-    stored.forEach(async ({ city, latitude, longitude }) => {
-      const w = await fetchWeatherForCity(latitude, longitude);
-      if (w) setPinnedWeather((prev) => ({ ...prev, [city]: { ...w, city } }));
-    });
-  }, []);
+    if (!isLoaded) return;
+    if (!isSignedIn) { setPinned([]); setPinnedWeather({}); return; }
 
-  // Realtime subscription for the 4 default Supabase cities
+    fetch('/api/cities')
+      .then((r) => r.json())
+      .then((cities: PinnedCity[]) => {
+        setPinned(cities);
+        cities.forEach(async ({ city, latitude, longitude }) => {
+          const w = await fetchWeatherForCoords(latitude, longitude);
+          if (w) setPinnedWeather((prev) => ({ ...prev, [city]: { city, ...w } }));
+        });
+      });
+  }, [isSignedIn, isLoaded]);
+
+  // Realtime updates for the 4 default cities
   useEffect(() => {
     const channel = supabase
       .channel('weather_snapshots')
@@ -104,10 +96,9 @@ export default function WeatherDashboard({ initial }: { initial: WeatherSnapshot
       const geoData = await geoRes.json();
       if (!geoData.results?.length) throw new Error(`No results for "${name}"`);
       const { name: cityName, latitude, longitude } = geoData.results[0];
-
-      const w = await fetchWeatherForCity(latitude, longitude);
+      const w = await fetchWeatherForCoords(latitude, longitude);
       if (!w) throw new Error('Could not fetch weather data');
-      setSearchResult({ ...w, city: cityName, latitude, longitude });
+      setSearchResult({ city: cityName, latitude, longitude, ...w });
     } catch (err: unknown) {
       setSearchError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -115,20 +106,22 @@ export default function WeatherDashboard({ initial }: { initial: WeatherSnapshot
     }
   }
 
-  function addPinned() {
+  async function addPinned() {
     if (!searchResult) return;
     const { city, latitude, longitude } = searchResult;
     if (pinned.some((p) => p.city === city)) return;
-    const updated = [...pinned, { city, latitude, longitude }];
-    setPinned(updated);
-    savePinned(updated);
+    await fetch('/api/cities', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ city, latitude, longitude }),
+    });
+    setPinned((prev) => [...prev, { city, latitude, longitude }]);
     setPinnedWeather((prev) => ({ ...prev, [city]: searchResult }));
   }
 
-  function removePinned(city: string) {
-    const updated = pinned.filter((p) => p.city !== city);
-    setPinned(updated);
-    savePinned(updated);
+  async function removePinned(city: string) {
+    await fetch(`/api/cities?city=${encodeURIComponent(city)}`, { method: 'DELETE' });
+    setPinned((prev) => prev.filter((p) => p.city !== city));
     setPinnedWeather((prev) => { const next = { ...prev }; delete next[city]; return next; });
   }
 
@@ -160,8 +153,16 @@ export default function WeatherDashboard({ initial }: { initial: WeatherSnapshot
         <section className="search-result">
           <div className="search-result-header">
             <p className="eyebrow">Search result</p>
-            {!isAlreadyPinned && (
-              <button className="add-btn" onClick={addPinned}>+ Add to My Dashboard</button>
+            {isLoaded && (
+              isSignedIn ? (
+                !isAlreadyPinned && (
+                  <button className="add-btn" onClick={addPinned}>+ Add to My Dashboard</button>
+                )
+              ) : (
+                <SignInButton mode="modal">
+                  <button className="add-btn">Sign in to save</button>
+                </SignInButton>
+              )
             )}
           </div>
           <div className="card-grid card-grid--single">
@@ -170,7 +171,7 @@ export default function WeatherDashboard({ initial }: { initial: WeatherSnapshot
         </section>
       )}
 
-      {pinned.length > 0 && (
+      {isSignedIn && pinned.length > 0 && (
         <section className="my-cities">
           <p className="eyebrow">My Cities</p>
           <div className="card-grid card-grid--auto">

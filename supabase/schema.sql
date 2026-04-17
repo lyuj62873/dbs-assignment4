@@ -24,3 +24,16 @@ grant usage on schema public to anon, authenticated;
 grant select on public.weather_snapshots to anon, authenticated;
 
 alter publication supabase_realtime add table public.weather_snapshots;
+
+-- Per-user pinned cities (managed via server-side API routes with service role key)
+create table if not exists public.user_cities (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null,
+  city text not null,
+  latitude numeric(8,5) not null,
+  longitude numeric(8,5) not null,
+  added_at timestamptz not null default timezone('utc', now()),
+  unique(user_id, city)
+);
+
+alter table public.user_cities enable row level security;
