@@ -37,3 +37,11 @@ create table if not exists public.user_cities (
 );
 
 alter table public.user_cities enable row level security;
+
+drop policy if exists "user_cities_service_role_all" on public.user_cities;
+create policy "user_cities_service_role_all"
+on public.user_cities
+for all
+to service_role
+using (true)
+with check (true);

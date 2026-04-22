@@ -12,9 +12,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <ClerkProvider>
       <html lang="en">
-        <body>
-          <header className="site-header">
-            <span className="site-header__logo">Weather Dashboard</span>
+        <body className="min-h-screen">
+          <header className="sticky top-0 z-10 flex items-center justify-between border-b border-black/10 bg-white/75 px-5 py-4 backdrop-blur md:px-8">
+            <span className="text-sm uppercase tracking-[0.22em] text-emerald-800">
+              Weather Dashboard
+            </span>
             <AuthHeader />
           </header>
           {children}

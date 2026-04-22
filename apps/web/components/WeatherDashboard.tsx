@@ -32,20 +32,32 @@ function WeatherCard({ city, temperature, windspeed, weather_code, updated_at, o
   weather_code: number; updated_at?: string; onRemove?: () => void;
 }) {
   return (
-    <article className="card">
-      {onRemove && <button className="card-remove" onClick={onRemove} aria-label="Remove">×</button>}
-      <h2>{city}</h2>
-      <p className="temp">{temperature}°C</p>
-      <p>{WMO_LABELS[weather_code] ?? `Code ${weather_code}`}</p>
-      <p className="meta">Wind {windspeed} km/h</p>
-      {updated_at && <p className="meta">{new Date(updated_at).toLocaleTimeString()}</p>}
+    <article className="relative rounded-[22px] border border-black/10 bg-white/80 p-6">
+      {onRemove && (
+        <button
+          className="absolute top-3 right-4 p-0 text-xl leading-none text-slate-500 transition hover:text-rose-600"
+          onClick={onRemove}
+          aria-label="Remove"
+        >
+          ×
+        </button>
+      )}
+      <h2 className="mb-2.5 text-xl">{city}</h2>
+      <p className="my-2 text-[2.5rem] leading-none font-bold text-emerald-800">{temperature}°C</p>
+      <p className="m-0 leading-6 text-slate-600">{WMO_LABELS[weather_code] ?? `Code ${weather_code}`}</p>
+      <p className="mt-1 text-sm leading-6 text-slate-600">Wind {windspeed} km/h</p>
+      {updated_at && (
+        <p className="mt-1 text-sm leading-6 text-slate-600">
+          {new Date(updated_at).toLocaleTimeString()}
+        </p>
+      )}
     </article>
   );
 }
 
 export default function WeatherDashboard({ initial }: { initial: WeatherSnapshot[] }) {
   const { isSignedIn, isLoaded } = useUser();
-  const [rows, setRows] = useState<WeatherSnapshot[]>(initial.slice(0, 4));
+  const [rows, setRows] = useState<WeatherSnapshot[]>(initial);
   const [pinned, setPinned] = useState<PinnedCity[]>([]);
   const [pinnedWeather, setPinnedWeather] = useState<Record<string, LiveWeather>>({});
 
@@ -129,11 +141,11 @@ export default function WeatherDashboard({ initial }: { initial: WeatherSnapshot
 
   return (
     <>
-      <section className="card-grid">
+      <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {rows.map((row) => <WeatherCard key={row.city} {...row} />)}
       </section>
 
-      <div className="search-bar">
+      <div className="mt-7 flex flex-col gap-2 sm:flex-row">
         <input
           ref={inputRef}
           type="text"
@@ -141,48 +153,64 @@ export default function WeatherDashboard({ initial }: { initial: WeatherSnapshot
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          className="flex-1 rounded-xl border border-black/10 bg-white/75 px-4 py-3 text-base text-slate-800 outline-none backdrop-blur focus:border-emerald-800"
         />
-        <button onClick={handleSearch} disabled={searching}>
+        <button
+          onClick={handleSearch}
+          disabled={searching}
+          className="rounded-xl bg-emerald-800 px-7 py-3 text-white transition disabled:cursor-default disabled:opacity-60"
+        >
           {searching ? 'Searching…' : 'Search'}
         </button>
       </div>
 
-      {searchError && <p className="search-error">{searchError}</p>}
+      {searchError && <p className="mt-3 text-sm text-rose-700">{searchError}</p>}
 
       {searchResult && (
-        <section className="search-result">
-          <div className="search-result-header">
-            <p className="eyebrow">Search result</p>
+        <section className="mt-6">
+          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <p className="m-0 text-[0.85rem] uppercase tracking-[0.2em] text-emerald-800">
+              Search result
+            </p>
             {isLoaded && (
               isSignedIn ? (
                 !isAlreadyPinned && (
-                  <button className="add-btn" onClick={addPinned}>+ Add to My Dashboard</button>
+                  <button
+                    className="w-fit rounded-lg border border-emerald-800 px-4 py-1.5 text-sm text-emerald-800 transition hover:bg-emerald-800 hover:text-white"
+                    onClick={addPinned}
+                  >
+                    + Add to My Dashboard
+                  </button>
                 )
               ) : (
                 <SignInButton mode="modal">
-                  <button className="add-btn">Sign in to save</button>
+                  <button className="w-fit rounded-lg border border-emerald-800 px-4 py-1.5 text-sm text-emerald-800 transition hover:bg-emerald-800 hover:text-white">
+                    Sign in to save
+                  </button>
                 </SignInButton>
               )
             )}
           </div>
-          <div className="card-grid card-grid--single">
+          <div className="grid max-w-xs gap-4">
             <WeatherCard {...searchResult} />
           </div>
         </section>
       )}
 
       {isSignedIn && pinned.length > 0 && (
-        <section className="my-cities">
-          <p className="eyebrow">My Cities</p>
-          <div className="card-grid card-grid--auto">
+        <section className="mt-10">
+          <p className="mb-3 text-[0.85rem] uppercase tracking-[0.2em] text-emerald-800">
+            My Cities
+          </p>
+          <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
             {pinned.map(({ city }) => {
               const w = pinnedWeather[city];
               return w ? (
                 <WeatherCard key={city} {...w} onRemove={() => removePinned(city)} />
               ) : (
-                <article key={city} className="card card--loading">
-                  <h2>{city}</h2>
-                  <p className="meta">Loading…</p>
+                <article key={city} className="rounded-[22px] border border-black/10 bg-white/80 p-6 opacity-60">
+                  <h2 className="mb-2.5 text-xl">{city}</h2>
+                  <p className="text-sm text-slate-600">Loading…</p>
                 </article>
               );
             })}

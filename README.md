@@ -11,7 +11,7 @@ updates to a Next.js frontend in real time.
 | Background worker | Node.js | Railway |
 | Database + Realtime | PostgreSQL + Supabase Realtime | Supabase |
 | Authentication | Clerk | Clerk |
-| Frontend | Next.js 15 | Vercel |
+| Frontend | Next.js 15 + Tailwind CSS 4 | Vercel |
 
 ## How it works
 
@@ -23,7 +23,7 @@ updates to a Next.js frontend in real time.
    then subscribes to Realtime so the UI updates live without a page refresh.
 5. Authenticated users can pin any city to a personal dashboard stored in
    the `user_cities` table; each user's selection is isolated by their Clerk
-   user ID and persists across devices.
+   user ID, protected by RLS, and persists across devices.
 
 ## Features
 

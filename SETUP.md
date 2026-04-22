@@ -9,7 +9,9 @@ Steps to provision the external services and wire them to the application.
 3. Confirm both tables exist: `weather_snapshots` and `user_cities`.
 4. In **Database → Replication**, verify `weather_snapshots` is included in
    the Realtime publication.
-5. In **Project Settings → API**, copy the Project URL, `anon` key, and
+5. Confirm the `user_cities_service_role_all` RLS policy exists for
+   `user_cities`.
+6. In **Project Settings → API**, copy the Project URL, `anon` key, and
    `service_role` key.
 
 ## 2. Clerk
@@ -43,6 +45,8 @@ SUPABASE_SERVICE_ROLE_KEY=
 2. Set the root directory to `apps/web`.
 3. Set the install command to `npm install --prefix=../..`.
 4. Add all five environment variables from `apps/web/.env.local`.
+5. Run `npm install` at the repo root so Tailwind CSS is installed before the
+   first build.
 
 ## 5. Railway (worker)
 
